@@ -44,5 +44,6 @@ jobs:
             echo "no change"
           else
             git commit -m "Data: $(date -u +'%Y-%m-%d %H:%M') UTC"
-            git push
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
