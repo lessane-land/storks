@@ -16,9 +16,66 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 BASE = "https://www.movebank.org/movebank/service/public/json"
+NOMINATIM = "https://nominatim.openstreetmap.org/reverse"
 UA = "ciguenas.lessane.es fetch (anonymous, public data only)"
 LIVE_DAYS = 30
 PAUSE = 1.5
+LANGS = ("es", "en")
+SETTLEMENT = ("village", "town", "city", "municipality", "hamlet")
+GEOCACHE = "tools/work/geocache.json"
+
+
+def load_cache():
+    try:
+        with open(GEOCACHE) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+
+def save_cache(cache):
+    import os
+    os.makedirs("tools/work", exist_ok=True)
+    with open(GEOCACHE, "w") as f:
+        json.dump(cache, f, ensure_ascii=False, indent=0, sort_keys=True)
+
+
+def place(lat, lon, cache):
+    """Settlement, province and country in each language, or None when there
+    is no settlement: contested boundaries and empty land get no label.
+    Cached on a 0.01 degree grid, one Nominatim request per second."""
+    key = f"{lat:.2f},{lon:.2f}"
+    if key in cache:
+        return cache[key]
+    def ask(lang):
+        params = {"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 10}
+        if lang:
+            params["accept-language"] = lang
+        req = urllib.request.Request(NOMINATIM + "?" + urllib.parse.urlencode(params), headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            a = json.load(r).get("address", {})
+        time.sleep(1.1)
+        return a
+
+    try:
+        # No accept-language: OSM's own name tag, the official local name
+        # (Lleida, not Lérida). Only the country is translated.
+        local = ask("")
+        settlement = next((local[k] for k in SETTLEMENT if k in local), None)
+        if not settlement:
+            out = None
+        else:
+            region = local.get("province") or local.get("state") or local.get("county")
+            out = {}
+            for lang in LANGS:
+                a = ask(lang)
+                out[lang] = {"place": settlement, "region": region, "country": a.get("country"), "cc": a.get("country_code")}
+    except Exception as e:
+        print(f"  nominatim failed: {e}", file=sys.stderr)
+        return None
+    cache[key] = out
+    save_cache(cache)
+    return out
 
 
 def get(params, tries=4):
@@ -77,6 +134,7 @@ def main():
     print("studies", file=sys.stderr)
     studies = [s for s in get({"entity_type": "study"}) if is_stork(s["name"])]
     out = {"generated": now.isoformat(timespec="seconds"), "studies": [], "birds": []}
+    cache = load_cache()
 
     for s in sorted(studies, key=lambda s: s["id"]):
         sid = s["id"]
@@ -113,6 +171,7 @@ def main():
                 "ring": ring,
                 "dead": dead,
                 "last": {"lon": round(last["location_long"], 5), "lat": round(last["location_lat"], 5), "t": last["timestamp"] // 1000},
+                "where": place(last["location_lat"], last["location_long"], cache),
                 "track": pts,
             })
             count += 1

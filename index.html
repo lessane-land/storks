@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0f14">
+<title>Cigüeñas</title>
+<meta name="description" content="Cigüeñas blancas con GPS, en directo, entre Europa y África.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<div id="map" aria-label="Mapa"></div>
+
+<header class="top">
+  <h1 class="title"><span data-i18n="title">Cigüeñas</span></h1>
+  <p class="tagline" data-i18n="tagline">Cigüeñas blancas con GPS, en directo</p>
+</header>
+
+<nav class="tools" aria-label="Opciones">
+  <button class="pill" id="lang" type="button" aria-label="Language">EN</button>
+  <button class="pill" id="credits-open" type="button" data-i18n="credits">Créditos</button>
+</nav>
+
+<section class="birds" id="birds" aria-live="polite"></section>
+
+<p class="stamp" id="stamp"></p>
+
+<aside class="sheet" id="credits" hidden>
+  <div class="sheet-body">
+    <button class="pill sheet-close" id="credits-close" type="button" data-i18n="close">Cerrar</button>
+    <h2 data-i18n="credits">Créditos</h2>
+    <p data-i18n="credits_intro"></p>
+    <ul id="credits-studies"></ul>
+    <p data-i18n="credits_data"></p>
+    <p data-i18n="credits_map"></p>
+    <p class="muted" data-i18n="credits_made"></p>
+  </div>
+</aside>
+
+<template id="bird-card">
+  <article class="bird">
+    <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="#stork"/></svg>
+    <div>
+      <h2 class="name"></h2>
+      <p class="where"></p>
+      <p class="meta"></p>
+    </div>
+  </article>
+</template>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="stork" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+        d="M3 13c4-1 7-4 9-7 1.5-2 3-2 4.5-1L22 7l-5 1c-1 3-3 6-7 7.5L8 21M8 16l-1 5M14 9c-3 4-6 5-10 5 2 2 5 2.5 8 1"/>
+    </symbol>
+  </defs>
+</svg>
+
+<script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
