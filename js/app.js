@@ -4,6 +4,9 @@
   var DATA_URL = "data/storks.json";
   var STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
   var TRACK_DAYS = 60;
+  // The stage: Iberia and the Strait. Birds elsewhere keep their card and their dot.
+  var IBERIA = [[-10.5, 35.0], [5.0, 44.5]];
+  var HIDDEN_LAYERS = ["place_state", "place_suburb", "place_other", "highway_name_other", "highway_name_motorway", "water_name"];
 
   var lang = pickLang();
   var map, data, markers = {}, activeId = null;
@@ -168,6 +171,18 @@
     markers[bird.id] = new maplibregl.Marker({ element: el }).setLngLat([bird.last.lon, bird.last.lat]).addTo(map);
   }
 
+  function calmBasemap() {
+    // Fewer labels, Latin names only, so the birds are the only thing that glows.
+    map.getStyle().layers.forEach(function (layer) {
+      if (HIDDEN_LAYERS.indexOf(layer.id) >= 0) {
+        map.setLayoutProperty(layer.id, "visibility", "none");
+      } else if (layer.type === "symbol" && layer.id.indexOf("place_") === 0) {
+        map.setLayoutProperty(layer.id, "text-field", ["coalesce", ["get", "name:latin"], ["get", "name"]]);
+        map.setPaintProperty(layer.id, "text-color", "#6c675f");
+      }
+    });
+  }
+
   function start() {
     applyStatic();
     map = new maplibregl.Map({
@@ -179,6 +194,8 @@
       cooperativeGestures: false
     });
     map.on("load", function () {
+      calmBasemap();
+      map.fitBounds(IBERIA, { padding: { top: 100, bottom: 200, left: 40, right: 40 }, duration: 0 });
       fetch(DATA_URL, { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) {
         data = d;
         var live = d.birds.filter(function (b) { return !b.dead && b.track.length > 1; });
@@ -186,11 +203,6 @@
         renderCards();
         renderCredits();
         renderStamp();
-        if (live.length) {
-          var all = [];
-          live.forEach(function (b) { all.push([b.last.lon, b.last.lat]); });
-          map.fitBounds(bounds(all), { padding: { top: 120, bottom: 220, left: 60, right: 60 }, maxZoom: 6, duration: 0 });
-        }
       });
     });
 
