@@ -24,7 +24,20 @@ window.STRINGS = {
     credits_map: "Mapa: OpenFreeMap, datos de OpenStreetMap y colaboradores.",
     credits_made: "Hecho en Madrid por Vane. Sin anuncios, sin cookies, sin rastreo.",
     study_live: "{n} en directo",
-    study_none: "sin señal reciente"
+    study_none: "sin señal reciente",
+    memory_title: "Un {date} de otros años",
+    memory_count: "{n} cigüeñas con GPS pasaron por aquí este mismo día.",
+    memory_line: "{name} ({year}) {where}",
+    region_iberia: "en la península",
+    region_strait: "cruzando el Estrecho",
+    region_morocco: "en Marruecos",
+    region_sahara: "sobre el Sáhara",
+    region_sahel: "en el Sahel",
+    region_europe: "en Europa",
+    region_levant: "en Oriente Próximo",
+    region_africa: "en África",
+    region_elsewhere: "lejos de aquí",
+    credits_archive: "Memoria: archivos CC0 de los estudios LifeTrack White Stork SW Germany, Oberschwaben, Bavaria, Vorarlberg y Rheinland-Pfalz (Fiedler, Flack, Wikelski y colaboradores, 2024) y MPIAB Argos white stork tracking 1991 a 2017 (Berthold, Kaatz, Querner, Wikelski y colaboradores, 2022), Movebank Data Repository."
   },
   en: {
     title: "Storks",
@@ -50,6 +63,19 @@ window.STRINGS = {
     credits_map: "Map: OpenFreeMap, data from OpenStreetMap and contributors.",
     credits_made: "Made in Madrid by Vane. No ads, no cookies, no tracking.",
     study_live: "{n} live",
-    study_none: "no recent signal"
+    study_none: "no recent signal",
+    memory_title: "On {date} in other years",
+    memory_count: "{n} GPS tagged storks were on their way this same day.",
+    memory_line: "{name} ({year}) {where}",
+    region_iberia: "in Iberia",
+    region_strait: "crossing the Strait",
+    region_morocco: "in Morocco",
+    region_sahara: "over the Sahara",
+    region_sahel: "in the Sahel",
+    region_europe: "in Europe",
+    region_levant: "in the Levant",
+    region_africa: "in Africa",
+    region_elsewhere: "far from here",
+    credits_archive: "Memory: CC0 archives of the studies LifeTrack White Stork SW Germany, Oberschwaben, Bavaria, Vorarlberg and Rheinland-Pfalz (Fiedler, Flack, Wikelski and colleagues, 2024) and MPIAB Argos white stork tracking 1991 to 2017 (Berthold, Kaatz, Querner, Wikelski and colleagues, 2022), Movebank Data Repository."
   }
 };

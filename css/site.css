@@ -125,6 +125,54 @@ body {
 
 .meta .mono { font-family: var(--mono); font-size: 12px; }
 
+.memory {
+  position: fixed;
+  right: 16px;
+  bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px));
+  width: min(360px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.memory[hidden] { display: none; }
+
+.memory-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.memory-count { margin: 4px 0 8px; color: var(--ink-soft); font-size: 12.5px; }
+
+.memory-list { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+
+.memory-list li { margin: 0; padding: 3px 0; color: var(--ink-soft); cursor: pointer; }
+
+.memory-list li:hover, .memory-list li.active { color: var(--ink); }
+
+.memory-list .y { font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute); }
+
+.memory-marker {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  opacity: 0.45;
+  cursor: pointer;
+}
+
+.memory-marker.active { background: var(--ink); opacity: 1; box-shadow: 0 0 8px rgba(232, 227, 216, 0.6); }
+
+@media (max-width: 719px) {
+  .memory { display: none; }
+}
+
 .stamp {
   position: fixed;
   right: 16px;

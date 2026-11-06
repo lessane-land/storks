@@ -55,9 +55,9 @@ def open_rows(path):
                 if not info.filename.endswith(".csv"):
                     continue
                 with z.open(info) as raw:
-                    yield from csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8", newline=""))
+                    yield from csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8", errors="replace", newline=""))
     else:
-        with open(path, newline="", encoding="utf-8") as f:
+        with open(path, newline="", encoding="utf-8", errors="replace") as f:
             yield from csv.DictReader(f)
 
 
@@ -141,7 +141,7 @@ def main():
             for k in range(TRAIL_DAYS, 0, -1):
                 p = days.get(d - timedelta(days=k))
                 if p:
-                    trail.append([p[1], p[2]])
+                    trail.append([round(p[1], 3), round(p[2], 3)])
             by_day[d.strftime("%m-%d")].append({"id": bid, "year": d.year, "pos": [lon, lat], "trail": trail})
 
     for key, entries in by_day.items():
