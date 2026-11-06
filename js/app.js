@@ -189,8 +189,8 @@
   }
 
   // The year bar and the date, driven by the flow each frame.
-  var lastDay = -1;
-  function onTick(day, flying) {
+  var lastDay = -1, followed = null, followedName = null, holdLine = null;
+  function onTick(day, flying, track) {
     var d = Math.floor(day);
     document.getElementById("year-head").style.left = (day / 366 * 100) + "%";
     if (d === lastDay) return;
@@ -198,8 +198,59 @@
     var date = new Date(Date.UTC(2024, 0, 1 + d));
     var f = new Intl.DateTimeFormat(locale(), { day: "numeric", month: "long", timeZone: "UTC" });
     document.getElementById("year-date").textContent = f.format(date);
-    document.getElementById("year-span").textContent = t("year_span", { a: yearData.first, b: yearData.last });
-    document.getElementById("year-sub").textContent = t("year_sub", { n: fmtNumber(flying) });
+    var span = document.getElementById("year-span");
+    var sub = document.getElementById("year-sub");
+    if (track) {
+      span.textContent = followedName + ", " + track.y;
+      sub.textContent = followBio(track) || t("follow_hint");
+    } else {
+      span.textContent = t("year_span", { a: yearData.first, b: yearData.last });
+      sub.textContent = holdLine && d === Flow.today() ? holdLine : t("year_sub", { n: fmtNumber(flying) });
+    }
+  }
+
+  // The bio of a followed archive bird, structured fields only.
+  function followBio(track) {
+    var b = bios[yearData.birds[track.b]];
+    if (!b || !b.born) return null;
+    var born = new Date(b.born + "T12:00:00Z");
+    var month = new Intl.DateTimeFormat(locale(), { month: "long", timeZone: "UTC" }).format(born);
+    return b.site ? t("bio_born", { site: b.site.split(",")[0], month: month, year: born.getUTCFullYear() })
+                  : t("bio_born_nosite", { month: month, year: born.getUTCFullYear() });
+  }
+
+  function onFollow(track, name) {
+    followed = track;
+    followedName = name || (track ? yearData.birds[track.b].split(":").pop().split(" ")[0] : "");
+    lastDay = -1;
+    document.body.classList.toggle("following", !!track);
+  }
+
+  // Days the live bird has spent within 30 km of its last fix.
+  function daysNear(bird) {
+    var last = [bird.last.lon, bird.last.lat], n = 0;
+    for (var i = bird.track.length - 1; i >= 0; i--) {
+      if (haversine(bird.track[i], last) > 30) break;
+      n = Math.round((bird.last.t - bird.track[i][2]) / 86400);
+    }
+    return n;
+  }
+
+  // The loop reaches today: the live birds pulse and the present gets a line.
+  function onToday() {
+    var live = data.birds.filter(function (b) { return !b.dead; }).sort(function (a, b) { return b.last.t - a.last.t; });
+    holdLine = null;
+    if (live.length) {
+      var b = live[0], w = b.where && b.where[lang], n = daysNear(b);
+      holdLine = w && n >= 2 ? t("today_near", { name: b.name, n: n, place: w.place })
+                             : t("today_signal", { name: b.name, ago: ago(b.last.t) });
+    }
+    lastDay = -1;
+    Object.keys(markers).forEach(function (k) {
+      var el = markers[k].getElement();
+      el.classList.add("pulse");
+      setTimeout(function () { el.classList.remove("pulse"); }, 5000);
+    });
   }
 
   // A stork's name as the study wrote it, or nothing: sponsor labels carry digits or several words.
@@ -231,7 +282,7 @@
     yearData.first = Math.min.apply(null, ys);
     yearData.last = Math.max.apply(null, ys);
     var names = yearData.birds.map(function (id) { return realName(bios[id]); });
-    Flow.init(map, yearData, { start: start, onTick: onTick, names: names, drift: !q.has("still") });
+    Flow.init(map, yearData, { start: start, onTick: onTick, onToday: onToday, onFollow: onFollow, names: names, drift: !q.has("still") });
     document.getElementById("year-today").style.left = (Flow.today() / 366 * 100) + "%";
     var bar = document.getElementById("year-bar");
     bar.addEventListener("click", function (e) {

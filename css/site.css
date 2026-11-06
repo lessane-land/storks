@@ -251,6 +251,17 @@ html[lang="en"] .year-today::after { content: "today"; left: -14px; }
   animation: halo 4s ease-out infinite;
 }
 
+.marker.pulse .dot { animation: pulse 1.2s ease-in-out 4; }
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.8); box-shadow: 0 0 18px rgba(242, 200, 121, 1); }
+}
+
+body.following .birds { opacity: 0.35; transition: opacity 0.6s; }
+
+.flow { cursor: default; }
+
 @keyframes halo {
   0% { transform: scale(0.5); opacity: 0.8; }
   70% { transform: scale(2.4); opacity: 0; }
