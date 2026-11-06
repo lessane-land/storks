@@ -131,7 +131,19 @@
   function focusBird(bird) {
     activeId = bird.id;
     document.querySelectorAll(".bird").forEach(function (el) { el.classList.toggle("active", el.dataset.id === bird.id); });
+    if (window.Flow) { Flow.follow(-1); Flow.rest(120000); }
+    document.getElementById("flock").hidden = false;
     map.fitBounds(bounds(bird.track), { padding: 80, maxZoom: 11, duration: 1800 });
+  }
+
+  // Back to the whole stage, and let the camera drift with the flock again.
+  function backToFlock() {
+    activeId = null;
+    document.querySelectorAll(".bird").forEach(function (el) { el.classList.remove("active"); });
+    document.getElementById("flock").hidden = true;
+    if (window.Flow) { Flow.follow(-1); Flow.resumeDrift(); }
+    var narrow = window.innerWidth < 720;
+    map.fitBounds(narrow ? STAGE_NARROW : STAGE, { padding: narrow ? { top: 90, bottom: 240, left: 10, right: 10 } : { top: 60, bottom: 120, left: 60, right: 60 }, duration: 1800 });
   }
 
   function bounds(points) {
@@ -330,6 +342,7 @@
       lastDay = -1;
       applyStatic();
     });
+    document.getElementById("flock").addEventListener("click", backToFlock);
     document.getElementById("credits-open").addEventListener("click", function () {
       document.getElementById("credits").hidden = false;
     });

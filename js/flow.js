@@ -25,6 +25,9 @@
   var onTick = null, onToday = null, running = false, names = [], labelled = [];
   var userTouched = 0, drifting = true, lastCamera = 0, holdUntil = 0, fadeAt = Infinity, fadeUntil = 0;
   var u = 0, start = 0;      // days since the loop started, and the loop's first day
+  var restMs = DRIFT_REST;   // how long the camera stays still after the user moves it
+
+  function restUntilMs() { return restMs; }
   var following = -1, placed = [], onFollow = null;
   var W = 0, H = 0, worldSize = 0, cx = 0, cy = 0; // projection state for the frame
 
@@ -222,7 +225,7 @@
     }
 
     // The camera: toward the followed bird, or the flock's centre, a few times a second.
-    if (drifting && now - lastCamera > DRIFT_MS && now - userTouched > DRIFT_REST) {
+    if (drifting && now - lastCamera > DRIFT_MS && now - userTouched > restUntilMs(now) && !map.isMoving()) {
       lastCamera = now;
       var tx = -1, ty = -1;
       if (following >= 0) { if (screenAt(tracks[following], t, pt)) { tx = pt.x; ty = pt.y; } }
@@ -276,7 +279,11 @@
       serif = getComputedStyle(document.body).getPropertyValue("--serif") || "serif";
       var container = map.getContainer();
       ["mousedown", "touchstart", "wheel"].forEach(function (ev) {
-        container.addEventListener(ev, function () { userTouched = performance.now(); }, { passive: true });
+        container.addEventListener(ev, function () { userTouched = performance.now(); restMs = DRIFT_REST; }, { passive: true });
+      });
+      // Gestures MapLibre turns into camera moves (drag, pinch, scroll zoom) pause the drift too.
+      ["dragstart", "zoomstart"].forEach(function (ev) {
+        map.on(ev, function (e) { if (e && e.originalEvent) { userTouched = performance.now(); restMs = DRIFT_REST; } });
       });
       container.addEventListener("click", function (e) {
         var r = container.getBoundingClientRect();
@@ -294,6 +301,9 @@
       last = performance.now();
       requestAnimationFrame(draw);
     },
+    // Keep the camera still for a while: a card click, or forever with Infinity.
+    rest: function (ms) { userTouched = performance.now(); restMs = ms; },
+    resumeDrift: function () { userTouched = 0; restMs = DRIFT_REST; },
     follow: function (n) {
       following = n;
       userTouched = 0;
