@@ -2,19 +2,16 @@
   "use strict";
 
   var DATA_URL = "data/storks.json";
+  var YEAR_URL = "data/year.json";
+  var BIRDS_URL = "data/birds.json";
   var STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
   var TRACK_DAYS = 60;
-  // The stage: Iberia and the Strait. Birds elsewhere keep their card and their dot.
-  var IBERIA = [[-10.5, 35.0], [5.0, 44.5]];
-  var HIDDEN_LAYERS = ["place_state", "place_suburb", "place_other", "highway_name_other", "highway_name_motorway", "water_name"];
-
-  var MEMORY_URL = "data/memory/";
-  var BIRDS_URL = "data/birds.json";
-  var MEMORY_LINES = 6;
+  // The stage: from the German nests to the Sahel.
+  var STAGE = [[-19, 9], [26, 54]];
+  var STAGE_NARROW = [[-13, 10], [14, 52]];
 
   var lang = pickLang();
-  var map, data, markers = {}, activeId = null;
-  var memory = null, bios = {}, memoryMarkers = [], activeMemory = null;
+  var map, data, markers = {}, activeId = null, yearData = null, bios = {};
 
   function pickLang() {
     try {
@@ -30,8 +27,10 @@
     return s;
   }
 
+  function locale() { return lang === "es" ? "es-ES" : "en-GB"; }
+
   function fmtNumber(n) {
-    return new Intl.NumberFormat(lang === "es" ? "es-ES" : "en-GB", { maximumFractionDigits: 0 }).format(n);
+    return new Intl.NumberFormat(locale(), { maximumFractionDigits: 0 }).format(n);
   }
 
   function ago(ts) {
@@ -66,114 +65,6 @@
       renderCredits();
       renderStamp();
     }
-    if (memory) renderMemory();
-  }
-
-  // Coarse, honest regions for past positions. Boxes, not guesses at a town.
-  function region(lon, lat) {
-    if (lat >= 35.6 && lat <= 36.6 && lon >= -6.6 && lon <= -4.8) return "region_strait";
-    if (lat >= 35.8 && lat <= 44.5 && lon >= -10 && lon <= 4.5) return "region_iberia";
-    if (lat >= 27.5 && lat < 35.8 && lon >= -13.5 && lon <= -1) return "region_morocco";
-    if (lat >= 18 && lat < 27.5 && lon >= -17 && lon <= 30) return "region_sahara";
-    if (lat >= 9 && lat < 18 && lon >= -18 && lon <= 40) return "region_sahel";
-    if (lat >= 44 && lon >= -10 && lon <= 40) return "region_europe";
-    if (lat >= 28 && lat < 44 && lon >= 30 && lon <= 48) return "region_levant";
-    if (lat < 28 && lon >= -18 && lon <= 52) return "region_africa";
-    return "region_elsewhere";
-  }
-
-  function dayKey(d) {
-    var m = d.getMonth() + 1, day = d.getDate();
-    return (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
-  }
-
-  function memoryGeoJSON(entries) {
-    var features = [];
-    entries.forEach(function (e) {
-      if (e.trail.length < 2) return;
-      features.push({
-        type: "Feature",
-        properties: { id: e.id + ":" + e.year },
-        geometry: { type: "LineString", coordinates: e.trail.concat([e.pos]) }
-      });
-    });
-    return { type: "FeatureCollection", features: features };
-  }
-
-  function addMemoryToMap() {
-    map.addSource("memory", { type: "geojson", data: memoryGeoJSON(memory) });
-    map.addLayer({
-      id: "memory-trails",
-      type: "line",
-      source: "memory",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": "#a9a398", "line-width": 0.8, "line-opacity": 0.22 }
-    }, "track-" + (data.birds[0] ? data.birds[0].id : undefined));
-    memory.forEach(function (e) {
-      var el = document.createElement("div");
-      el.className = "memory-marker";
-      el.addEventListener("click", function () { focusMemory(e); });
-      var mk = new maplibregl.Marker({ element: el }).setLngLat(e.pos).addTo(map);
-      memoryMarkers.push({ entry: e, el: el, marker: mk });
-    });
-  }
-
-  function focusMemory(e) {
-    activeMemory = e;
-    memoryMarkers.forEach(function (m) { m.el.classList.toggle("active", m.entry === e); });
-    document.querySelectorAll(".memory-list li").forEach(function (li) { li.classList.toggle("active", li.dataset.key === e.id + ":" + e.year); });
-    map.fitBounds(bounds(e.trail.concat([e.pos])), { padding: 100, maxZoom: 8, duration: 1800 });
-  }
-
-  function memoryLabel(e) {
-    var b = bios[e.id];
-    return b && b.name ? b.name : e.id.split(":").pop();
-  }
-
-  function renderMemory() {
-    var host = document.getElementById("memory");
-    if (!memory || !memory.length) { host.hidden = true; return; }
-    host.hidden = false;
-    var f = new Intl.DateTimeFormat(lang === "es" ? "es-ES" : "en-GB", { day: "numeric", month: "long" });
-    document.getElementById("memory-title").textContent = t("memory_title", { date: f.format(new Date()) });
-    document.getElementById("memory-count").textContent = t("memory_count", { n: fmtNumber(memory.length) });
-    var ul = document.getElementById("memory-list");
-    ul.innerHTML = "";
-    // Named birds first, nearest to Iberia first, a different handful each day.
-    // Real names only: sponsor labels carry digits or several words.
-    var picks = memory.slice().filter(function (e) {
-      var b = bios[e.id];
-      return b && b.name && !/\d/.test(b.name) && b.name.split(" ").length <= 2;
-    });
-    var seed = new Date().getDate() * 7 + new Date().getMonth();
-    function shuffleKey(e) {
-      var h = seed;
-      var s = e.id + e.year;
-      for (var i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) % 100003;
-      return h;
-    }
-    picks.sort(function (a, b) {
-      var ra = region(a.pos[0], a.pos[1]) === "region_elsewhere" ? 1 : 0;
-      var rb = region(b.pos[0], b.pos[1]) === "region_elsewhere" ? 1 : 0;
-      if (ra !== rb) return ra - rb;
-      return shuffleKey(a) - shuffleKey(b);
-    });
-    var seen = {};
-    picks = picks.filter(function (e) { if (seen[e.id]) return false; seen[e.id] = true; return true; });
-    picks.slice(0, MEMORY_LINES).forEach(function (e) {
-      var li = document.createElement("li");
-      li.dataset.key = e.id + ":" + e.year;
-      var where = t(region(e.pos[0], e.pos[1]));
-      li.innerHTML = "";
-      li.appendChild(document.createTextNode(memoryLabel(e) + " "));
-      var y = document.createElement("span");
-      y.className = "y";
-      y.textContent = String(e.year);
-      li.appendChild(y);
-      li.appendChild(document.createTextNode(" " + where));
-      li.addEventListener("click", function () { focusMemory(e); });
-      ul.appendChild(li);
-    });
   }
 
   function whereLine(bird) {
@@ -214,7 +105,7 @@
 
   function renderStamp() {
     var d = new Date(data.generated);
-    var f = new Intl.DateTimeFormat(lang === "es" ? "es-ES" : "en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    var f = new Intl.DateTimeFormat(locale(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
     document.getElementById("stamp").textContent = t("stamp", { date: f.format(d) });
   }
 
@@ -237,8 +128,7 @@
   function focusBird(bird) {
     activeId = bird.id;
     document.querySelectorAll(".bird").forEach(function (el) { el.classList.toggle("active", el.dataset.id === bird.id); });
-    var b = bounds(bird.track);
-    map.fitBounds(b, { padding: 80, maxZoom: 11, duration: 1800 });
+    map.fitBounds(bounds(bird.track), { padding: 80, maxZoom: 11, duration: 1800 });
   }
 
   function bounds(points) {
@@ -248,7 +138,6 @@
   }
 
   function trackGeoJSON(bird) {
-    // One feature per segment, with its age in days, so the line fades into the past.
     var features = [];
     var now = Date.now() / 1000;
     for (var i = 1; i < bird.track.length; i++) {
@@ -284,58 +173,79 @@
     markers[bird.id] = new maplibregl.Marker({ element: el }).setLngLat([bird.last.lon, bird.last.lat]).addTo(map);
   }
 
-  function calmBasemap() {
-    // Fewer labels, Latin names only, so the birds are the only thing that glows.
+  // Coastlines and a breath of land. No labels, no roads: the birds are the light.
+  function nightBasemap() {
     map.getStyle().layers.forEach(function (layer) {
-      if (HIDDEN_LAYERS.indexOf(layer.id) >= 0) {
+      var sl = layer["source-layer"] || "";
+      if (layer.type === "symbol" || /transportation|building|aeroway|landuse|park|poi|housenumber/.test(sl)) {
         map.setLayoutProperty(layer.id, "visibility", "none");
-      } else if (layer.type === "symbol" && layer.id.indexOf("place_") === 0) {
-        map.setLayoutProperty(layer.id, "text-field", ["coalesce", ["get", "name:latin"], ["get", "name"]]);
-        map.setPaintProperty(layer.id, "text-color", "#6c675f");
+      } else if (sl === "boundary") {
+        map.setPaintProperty(layer.id, "line-opacity", 0.18);
       }
     });
   }
 
-  function loadMemory() {
-    var key = dayKey(new Date());
-    Promise.all([
-      fetch(BIRDS_URL).then(function (r) { return r.ok ? r.json() : []; }),
-      fetch(MEMORY_URL + key + ".json").then(function (r) { return r.ok ? r.json() : []; })
-    ]).then(function (res) {
-      res[0].forEach(function (b) { bios[b.id] = b; });
-      memory = res[1];
-      if (memory.length) addMemoryToMap();
-      renderMemory();
-    }).catch(function () { memory = []; });
+  // The year bar and the date, driven by the flow each frame.
+  var lastDay = -1;
+  function onTick(day, flying) {
+    var d = Math.floor(day);
+    document.getElementById("year-head").style.left = (day / 366 * 100) + "%";
+    if (d === lastDay) return;
+    lastDay = d;
+    var date = new Date(Date.UTC(2024, 0, 1 + d));
+    var f = new Intl.DateTimeFormat(locale(), { day: "numeric", month: "long", timeZone: "UTC" });
+    document.getElementById("year-date").textContent = f.format(date);
+    document.getElementById("year-sub").textContent = t("year_sub", { n: fmtNumber(flying) });
+  }
+
+  function startFlow() {
+    var q = new URLSearchParams(location.search);
+    var start = q.has("day") ? parseInt(q.get("day"), 10) : undefined;
+    Flow.init(map, yearData, { start: start, onTick: onTick });
+    document.getElementById("year-today").style.left = (Flow.today() / 366 * 100) + "%";
+    var bar = document.getElementById("year-bar");
+    bar.addEventListener("click", function (e) {
+      var r = bar.getBoundingClientRect();
+      Flow.seek((e.clientX - r.left) / r.width * 366);
+    });
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) Flow.pause(); else Flow.resume();
+    });
   }
 
   function start() {
     applyStatic();
+    var narrow = window.innerWidth < 720;
     map = new maplibregl.Map({
       container: "map",
       style: STYLE_URL,
-      center: [-3.7, 40.4],
-      zoom: 4.2,
+      bounds: narrow ? STAGE_NARROW : STAGE,
+      fitBoundsOptions: { padding: narrow ? { top: 90, bottom: 240, left: 10, right: 10 } : { top: 60, bottom: 120, left: 60, right: 60 } },
       attributionControl: false,
       cooperativeGestures: false
     });
     map.on("load", function () {
-      calmBasemap();
-      map.fitBounds(IBERIA, { padding: { top: 100, bottom: 200, left: 40, right: 40 }, duration: 0 });
-      fetch(DATA_URL, { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) {
-        data = d;
-        var live = d.birds.filter(function (b) { return !b.dead && b.track.length > 1; });
-        live.forEach(addBirdToMap);
+      nightBasemap();
+      Promise.all([
+        fetch(DATA_URL, { cache: "no-cache" }).then(function (r) { return r.json(); }),
+        fetch(YEAR_URL).then(function (r) { return r.ok ? r.json() : null; }),
+        fetch(BIRDS_URL).then(function (r) { return r.ok ? r.json() : []; })
+      ]).then(function (res) {
+        data = res[0];
+        yearData = res[1];
+        res[2].forEach(function (b) { bios[b.id] = b; });
+        data.birds.filter(function (b) { return !b.dead && b.track.length > 1; }).forEach(addBirdToMap);
         renderCards();
         renderCredits();
         renderStamp();
-        loadMemory();
+        if (yearData) startFlow();
       });
     });
 
     document.getElementById("lang").addEventListener("click", function () {
       lang = lang === "es" ? "en" : "es";
       try { localStorage.setItem("lang", lang); } catch (e) { /* private mode */ }
+      lastDay = -1;
       applyStatic();
     });
     document.getElementById("credits-open").addEventListener("click", function () {

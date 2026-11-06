@@ -26,10 +26,13 @@
 
 <section class="birds" id="birds" aria-live="polite"></section>
 
-<section class="memory" id="memory" hidden>
-  <h2 class="memory-title" id="memory-title"></h2>
-  <p class="memory-count" id="memory-count"></p>
-  <ul class="memory-list" id="memory-list"></ul>
+<section class="year" id="year">
+  <p class="year-date" id="year-date"></p>
+  <p class="year-sub" id="year-sub"></p>
+  <div class="year-bar" id="year-bar" role="slider" aria-label="Day of the year">
+    <span class="year-today" id="year-today"></span>
+    <span class="year-head" id="year-head"></span>
+  </div>
 </section>
 
 <p class="stamp" id="stamp"></p>
@@ -69,6 +72,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
 <script src="js/i18n.js"></script>
+<script src="js/flow.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
