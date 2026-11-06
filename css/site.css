@@ -149,6 +149,16 @@ body {
   text-shadow: 0 1px 14px rgba(0, 0, 0, 0.7);
 }
 
+.year-span {
+  margin: 2px 0 0;
+  font-family: var(--serif);
+  font-size: 18px;
+  color: var(--ink-soft);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+}
+
+.bio { margin: 3px 0 0; color: var(--ink-soft); font-size: 13px; }
+
 .year-sub {
   margin: 6px 0 12px;
   color: var(--ink-soft);
@@ -296,6 +306,8 @@ html[lang="en"] .year-today::after { content: "today"; left: -14px; }
 @media (max-width: 719px) {
   .year-date { font-size: 30px; }
   .year-sub { display: none; }
+  .year-span { font-size: 14px; }
+  .bio { display: none; }
   .year-bar { width: 100%; }
   .birds { bottom: 84px; }
   .bird { padding: 9px 12px; }
@@ -308,6 +320,7 @@ html[lang="en"] .year-today::after { content: "today"; left: -14px; }
   .birds { bottom: 32px; left: 24px; max-width: 360px; }
   .year { right: 24px; bottom: 36px; left: auto; width: 480px; }
   .year-date { font-size: 56px; }
+  .year-span { font-size: 20px; }
   .top { left: 24px; top: 24px; }
   .tools { right: 24px; top: 24px; }
   .stamp { right: 24px; bottom: 14px; }

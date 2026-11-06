@@ -10,8 +10,12 @@
   var COLOR = "242, 200, 121";
   var YEAR = 366;
 
+  var LABEL_EVERY = 14;     // one named comet in fourteen carries its name
+  var DRIFT = 0.012;        // camera easing per frame toward the flock
+  var DRIFT_REST = 12000;   // ms of calm after the user touches the map
+
   var map, canvas, ctx, data, tracks = [], t = 0, last = 0, today = 0, dpr = 1;
-  var onTick = null, running = false;
+  var onTick = null, running = false, names = [], labelled = [], userTouched = 0, drifting = true;
 
   function dayOfYear(d) {
     var start = Date.UTC(2024, 0, 1);
@@ -54,13 +58,17 @@
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    var flying = 0;
+    var flying = 0, sumLon = 0, sumLat = 0;
+    var labels = [];
     for (var n = 0; n < tracks.length; n++) {
       var tr = tracks[n];
       var head = posAt(tr, t);
       if (!head) continue;
       flying++;
+      sumLon += head[0];
+      sumLat += head[1];
       var hp = map.project(head);
+      if (labelled[n]) labels.push([hp, names[tr.b]]);
 
       // Tail: one segment per day, fading into the past.
       var prev = hp;
@@ -87,8 +95,41 @@
       ctx.arc(hp.x, hp.y, 1.6, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    // Names, drawn last so they sit above the light.
+    ctx.globalCompositeOperation = "source-over";
+    ctx.font = "12px " + getComputedStyle(document.body).getPropertyValue("--serif");
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(232, 227, 216, 0.72)";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+    ctx.shadowBlur = 4;
+    var placed = [];
+    for (var l = 0; l < labels.length; l++) {
+      var p = labels[l][0], free = true;
+      for (var m = 0; m < placed.length; m++) {
+        if (Math.abs(placed[m].x - p.x) < 70 && Math.abs(placed[m].y - p.y) < 14) { free = false; break; }
+      }
+      if (!free) continue;
+      placed.push(p);
+      ctx.fillText(labels[l][1], p.x + 7, p.y);
+    }
+    ctx.shadowBlur = 0;
+
+    // The camera follows the flock, slowly, unless the user is looking around.
+    if (drifting && flying && now - userTouched > DRIFT_REST) {
+      var c = map.getCenter();
+      var target = [sumLon / flying, sumLat / flying];
+      map.jumpTo({ center: [c.lng + (target[0] - c.lng) * DRIFT, c.lat + (target[1] - c.lat) * DRIFT] });
+    }
+
     if (onTick) onTick(t, flying);
     requestAnimationFrame(draw);
+  }
+
+  function hash(s) {
+    var h = 7;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1000003;
+    return h;
   }
 
   window.Flow = {
@@ -99,6 +140,15 @@
       today = dayOfYear(new Date());
       t = (opts && typeof opts.start === "number") ? opts.start : (today + YEAR - 20) % YEAR;
       onTick = opts && opts.onTick;
+      names = (opts && opts.names) || [];
+      labelled = tracks.map(function (tr) {
+        var nm = names[tr.b];
+        return !!nm && hash(nm + tr.y) % LABEL_EVERY === 0;
+      });
+      drifting = !(opts && opts.drift === false);
+      ["mousedown", "touchstart", "wheel"].forEach(function (ev) {
+        map.getContainer().addEventListener(ev, function () { userTouched = performance.now(); }, { passive: true });
+      });
       canvas = document.createElement("canvas");
       canvas.className = "flow";
       map.getContainer().appendChild(canvas);

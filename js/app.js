@@ -95,6 +95,9 @@
       var where = whereLine(bird);
       var whereEl = node.querySelector(".where");
       if (where) whereEl.textContent = where; else whereEl.remove();
+      var bio = bioLine(bird);
+      var bioEl = node.querySelector(".bio");
+      if (bio) bioEl.textContent = bio; else bioEl.remove();
       var days = Math.min(TRACK_DAYS, Math.max(1, Math.round((bird.last.t - bird.track[0][2]) / 86400)));
       node.querySelector(".meta").textContent =
         t("last_signal", { ago: ago(bird.last.t) }) + " · " + t("walked", { km: fmtNumber(km(bird.track)), days: days });
@@ -195,13 +198,40 @@
     var date = new Date(Date.UTC(2024, 0, 1 + d));
     var f = new Intl.DateTimeFormat(locale(), { day: "numeric", month: "long", timeZone: "UTC" });
     document.getElementById("year-date").textContent = f.format(date);
+    document.getElementById("year-span").textContent = t("year_span", { a: yearData.first, b: yearData.last });
     document.getElementById("year-sub").textContent = t("year_sub", { n: fmtNumber(flying) });
+  }
+
+  // A stork's name as the study wrote it, or nothing: sponsor labels carry digits or several words.
+  function realName(b) {
+    return b && b.name && !/\d/.test(b.name) && b.name.split(" ").length <= 2 ? b.name : null;
+  }
+
+  // The live bird's archive bio, matched by ring number, told from structured fields only.
+  function bioLine(bird) {
+    var b = null;
+    Object.keys(bios).forEach(function (k) { if (bird.ring && bios[k].ring === bird.ring) b = bios[k]; });
+    if (!b || !b.born) return null;
+    var born = new Date(b.born + "T12:00:00Z");
+    var month = new Intl.DateTimeFormat(locale(), { month: "long", timeZone: "UTC" }).format(born);
+    var parts = [b.site ? t("bio_born", { site: b.site.split(",")[0], month: month, year: born.getUTCFullYear() })
+                        : t("bio_born_nosite", { month: month, year: born.getUTCFullYear() })];
+    if (b.stage === "nestling") parts.push(t("bio_tagged"));
+    var years = Math.floor((Date.now() - born.getTime()) / 31557600000);
+    if (years >= 2) parts.push(t("bio_years", { n: years }));
+    return parts.join(" ");
   }
 
   function startFlow() {
     var q = new URLSearchParams(location.search);
     var start = q.has("day") ? parseInt(q.get("day"), 10) : undefined;
-    Flow.init(map, yearData, { start: start, onTick: onTick });
+    var years = {};
+    yearData.tracks.forEach(function (tr) { years[tr.y] = true; });
+    var ys = Object.keys(years).map(Number);
+    yearData.first = Math.min.apply(null, ys);
+    yearData.last = Math.max.apply(null, ys);
+    var names = yearData.birds.map(function (id) { return realName(bios[id]); });
+    Flow.init(map, yearData, { start: start, onTick: onTick, names: names, drift: !q.has("still") });
     document.getElementById("year-today").style.left = (Flow.today() / 366 * 100) + "%";
     var bar = document.getElementById("year-bar");
     bar.addEventListener("click", function (e) {
