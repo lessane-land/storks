@@ -13,6 +13,7 @@
   var SLOW = 1.2;           // days per second near today
   var NEAR = 4;             // days around today where the loop slows down
   var HOLD = 5000;          // ms the loop rests on today
+  var FADE = 900;           // ms to fade out and in when the loop restarts
   var LABEL_EVERY = 14;     // one named comet in fourteen carries its name
   var DRIFT = 0.06;         // camera easing per camera step toward the flock
   var DRIFT_MS = 100;       // ms between camera steps
@@ -22,7 +23,8 @@
 
   var map, canvas, ctx, data, tracks = [], t = 0, last = 0, today = 0, dpr = 1;
   var onTick = null, onToday = null, running = false, names = [], labelled = [];
-  var userTouched = 0, drifting = true, lastCamera = 0, holdUntil = 0, held = false;
+  var userTouched = 0, drifting = true, lastCamera = 0, holdUntil = 0, fadeAt = Infinity, fadeUntil = 0;
+  var u = 0, start = 0;      // days since the loop started, and the loop's first day
   var following = -1, placed = [], onFollow = null;
   var W = 0, H = 0, worldSize = 0, cx = 0, cy = 0; // projection state for the frame
 
@@ -103,27 +105,34 @@
     var dt = Math.min(0.1, (now - last) / 1000);
     last = now;
 
-    // Time: slow near today, rest on it once per loop.
-    var dist = Math.min(Math.abs(t - today), YEAR - Math.abs(t - today));
+    // Time: the loop runs the last twelve months and ends on today. u counts
+    // days since the loop started; near the end it slows, rests, fades, restarts.
+    var left = YEAR - 1 - u;
     if (now < holdUntil) {
       dt = 0;
+    } else if (fadeUntil > now) {
+      dt = 0;
+      if (now >= fadeAt) { u = 0; fadeAt = Infinity; }
     } else {
-      var speed = dist < NEAR ? SLOW + (SPEED - SLOW) * (dist / NEAR) : SPEED;
-      var before = t;
-      t = (t + dt * speed) % YEAR;
-      if (!held && before <= today && t >= today && dist < 2) {
-        held = true;
-        t = today;
+      var speed = left < NEAR ? SLOW + (SPEED - SLOW) * (left / NEAR) : SPEED;
+      u += dt * speed;
+      if (u >= YEAR - 1) {
+        u = YEAR - 1;
         holdUntil = now + HOLD;
+        fadeAt = now + HOLD + FADE;
+        fadeUntil = now + HOLD + FADE * 2;
         if (onToday) onToday();
       }
-      if (dist > NEAR * 2) held = false;
     }
+    t = (start + u) % YEAR;
+    var alpha = 1;
+    if (now < fadeUntil && now >= holdUntil) alpha = now < fadeAt ? 1 - (now - holdUntil) / FADE : (now - fadeAt) / FADE;
 
     frameProjection();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = alpha;
     drawSeason();
 
     ctx.globalCompositeOperation = "lighter";
@@ -224,7 +233,8 @@
       }
     }
 
-    if (onTick) onTick(t, flying, following >= 0 ? tracks[following] : null);
+    ctx.globalAlpha = 1;
+    if (onTick) onTick(t, flying, following >= 0 ? tracks[following] : null, u / (YEAR - 1));
     requestAnimationFrame(draw);
   }
 
@@ -251,7 +261,9 @@
       tracks = data.tracks;
       prepare();
       today = dayOfYear(new Date());
-      t = (opts && typeof opts.start === "number") ? opts.start : (today + YEAR - 20) % YEAR;
+      start = (today + 1) % YEAR;
+      u = (opts && typeof opts.start === "number") ? ((opts.start - start) % YEAR + YEAR) % YEAR : 0;
+      t = (start + u) % YEAR;
       onTick = opts && opts.onTick;
       onToday = opts && opts.onToday;
       onFollow = opts && opts.onFollow;
@@ -289,7 +301,8 @@
     },
     day: function () { return t; },
     today: function () { return today; },
-    seek: function (d) { t = ((d % YEAR) + YEAR) % YEAR; holdUntil = 0; held = false; },
+    seek: function (d) { u = Math.min(YEAR - 1.01, ((d - start) % YEAR + YEAR) % YEAR); holdUntil = 0; fadeUntil = 0; fadeAt = Infinity; },
+    progress: function () { return u / (YEAR - 1); },
     pause: function () { running = false; },
     resume: function () { if (!running) { running = true; last = performance.now(); requestAnimationFrame(draw); } }
   };

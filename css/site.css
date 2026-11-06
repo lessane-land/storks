@@ -185,25 +185,30 @@ body {
   background: var(--line);
 }
 
-.year-today {
+.year-today, .year-ago {
   position: absolute;
-  top: 3px;
-  width: 1px;
-  height: 9px;
-  background: var(--ink-soft);
-}
-
-.year-today::after {
-  content: "hoy";
-  position: absolute;
-  top: -16px;
-  left: -10px;
+  top: -14px;
   font-family: var(--mono);
   font-size: 10px;
   color: var(--ink-mute);
 }
 
-html[lang="en"] .year-today::after { content: "today"; left: -14px; }
+.year-ago { left: 0; }
+
+.year-today { right: 0; }
+
+.year-today::after, .year-ago::after {
+  content: "";
+  position: absolute;
+  top: 17px;
+  width: 1px;
+  height: 9px;
+  background: var(--ink-soft);
+}
+
+.year-today::after { right: 0; }
+
+.year-ago::after { left: 0; }
 
 .year-head {
   position: absolute;

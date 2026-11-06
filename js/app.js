@@ -190,9 +190,9 @@
 
   // The year bar and the date, driven by the flow each frame.
   var lastDay = -1, followed = null, followedName = null, holdLine = null;
-  function onTick(day, flying, track) {
+  function onTick(day, flying, track, progress) {
     var d = Math.floor(day);
-    document.getElementById("year-head").style.left = (day / 366 * 100) + "%";
+    document.getElementById("year-head").style.left = (progress * 100) + "%";
     if (d === lastDay) return;
     lastDay = d;
     var date = new Date(Date.UTC(2024, 0, 1 + d));
@@ -206,6 +206,8 @@
     } else {
       span.textContent = t("year_span", { a: yearData.first, b: yearData.last });
       sub.textContent = holdLine && d === Flow.today() ? holdLine : t("year_sub", { n: fmtNumber(flying) });
+      document.getElementById("year-ago").textContent = t("year_ago");
+      document.getElementById("year-today").textContent = t("today");
     }
   }
 
@@ -283,11 +285,10 @@
     yearData.last = Math.max.apply(null, ys);
     var names = yearData.birds.map(function (id) { return realName(bios[id]); });
     Flow.init(map, yearData, { start: start, onTick: onTick, onToday: onToday, onFollow: onFollow, names: names, drift: !q.has("still") });
-    document.getElementById("year-today").style.left = (Flow.today() / 366 * 100) + "%";
     var bar = document.getElementById("year-bar");
     bar.addEventListener("click", function (e) {
       var r = bar.getBoundingClientRect();
-      Flow.seek((e.clientX - r.left) / r.width * 366);
+      Flow.seek(Flow.today() + 1 + (e.clientX - r.left) / r.width * 365);
     });
     document.addEventListener("visibilitychange", function () {
       if (document.hidden) Flow.pause(); else Flow.resume();
