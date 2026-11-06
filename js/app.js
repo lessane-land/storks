@@ -228,8 +228,8 @@
       nightBasemap();
       Promise.all([
         fetch(DATA_URL, { cache: "no-cache" }).then(function (r) { return r.json(); }),
-        fetch(YEAR_URL).then(function (r) { return r.ok ? r.json() : null; }),
-        fetch(BIRDS_URL).then(function (r) { return r.ok ? r.json() : []; })
+        fetch(YEAR_URL, { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }),
+        fetch(BIRDS_URL, { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : []; })
       ]).then(function (res) {
         data = res[0];
         yearData = res[1];
